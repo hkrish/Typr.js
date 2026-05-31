@@ -987,6 +987,11 @@ Typr["U"] = function() {
 	}
 
 	function initHB(hurl,resp) {
+	// fork: the hb.wasm is bundled with Typr (src/hb.wasm). Callers no longer need
+	// to pass a wasm source: initHB(callback) or initHB() loads the local copy.
+	// Typr["U"]["hbUrl"] is set by the loader to the bundled wasm's resolved URL.
+	if (typeof hurl === "function") { resp = hurl; hurl = null; }
+	if (hurl == null) hurl = Typr["U"]["hbUrl"] || "hb.wasm";
 	var codeLength = function(code) {
 		var len=0;
 		if     ((code&(0xffffffff-(1<< 7)+1))==0) {  len=1;  }
