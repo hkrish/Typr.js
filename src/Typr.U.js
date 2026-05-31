@@ -1124,6 +1124,61 @@ Typr["U"] = function() {
 		});	
 	}
 	
-	return {"shape":shape,"shapeToPath":shapeToPath,"codeToGlyph":codeToGlyph, "glyphToPath":glyphToPath, "pathToSVG":pathToSVG, "SVGToPath":SVGToPath, "pathToContext":pathToContext, "initHB":initHB};
+	// --- Font fallback ------------------------------------------------------
+	// fonts: an ordered cascade of parsed Typr fonts. codeToFont returns the index
+	// of the first font whose cmap covers `cp` (codeToGlyph != 0), or -1 if none.
+	// Probing a font that has no familiar cmap platform throws inside codeToGlyph;
+	// that is caught and treated as "not covered" so an exotic fallback face cannot
+	// break itemization.
+	function codeToFont(fonts, cp) {
+		for(var i=0; i<fonts.length; i++) {
+			var g = 0;  try {  g = codeToGlyph(fonts[i], cp);  } catch(e) {  g = 0;  }
+			if(g != 0) return i;
+		}
+		return -1;
+	}
+
+	// Split `str` into runs of a single resolved font, cluster-aware with neutral
+	// lookahead. Returns [{fi, str, cl}]: `fi` indexes `fonts`, `str` is the run's
+	// text, `cl` is its start offset in the original string.
+	//
+	// Resolution is per grapheme cluster (Intl.Segmenter when present, else per
+	// code point) so a base and its combining marks / ZWJ sequence / variation
+	// selector stay in one font. Strong clusters resolve via codeToFont(). Neutral
+	// clusters (whitespace) carry no script identity: they are buffered and attach
+	// to the FOLLOWING strong cluster (so a space between two Arabic words stays
+	// with Arabic, while the space leaving an Arabic run rejoins the next font);
+	// trailing neutrals attach to the previous run, an all-neutral string to `dft`.
+	// Clusters no font covers also resolve to `dft` (prm.dft, default 0 — the
+	// cascade base; placing a last-resort font there makes .notdef visible).
+	// Adjacent clusters of the same font are coalesced.
+	function fontItemize(fonts, str, prm) {
+		if(prm==null) prm={};
+		var dft = prm["dft"]!=null ? prm["dft"] : 0;
+		var runs = [], pend=null;   // pend = {str, cl}: buffered neutrals awaiting a strong cluster
+		function emit(fi, s, cl) {
+			var last = runs.length ? runs[runs.length-1] : null;
+			if(last && last["fi"]==fi) last["str"] += s;
+			else runs.push({"fi":fi, "str":s, "cl":cl});
+		}
+		var segs = [];
+		if(typeof Intl!="undefined" && Intl.Segmenter) {
+			var sg = new Intl.Segmenter(undefined, {"granularity":"grapheme"});
+			for(var it of sg.segment(str)) segs.push([it.segment, it.index]);
+		} else {
+			for(var i=0; i<str.length; ) {  var cp=str.codePointAt(i), n=cp>0xffff?2:1;  segs.push([str.substr(i,n), i]);  i+=n;  }
+		}
+		for(var k=0; k<segs.length; k++) {
+			var seg=segs[k][0], cl=segs[k][1];
+			if(/^\s+$/.test(seg)) {  if(pend) pend.str+=seg;  else pend={str:seg, cl:cl};  continue;  }
+			var fi = codeToFont(fonts, seg.codePointAt(0));  if(fi<0) fi=dft;
+			if(pend) {  emit(fi, pend.str, pend.cl);  pend=null;  }   // neutrals -> following strong cluster
+			emit(fi, seg, cl);
+		}
+		if(pend) emit(runs.length ? runs[runs.length-1]["fi"] : dft, pend.str, pend.cl);  // trailing -> previous run, else dft
+		return runs;
+	}
+
+	return {"shape":shape,"shapeToPath":shapeToPath,"codeToGlyph":codeToGlyph, "codeToFont":codeToFont, "fontItemize":fontItemize, "glyphToPath":glyphToPath, "pathToSVG":pathToSVG, "SVGToPath":SVGToPath, "pathToContext":pathToContext, "initHB":initHB};
 }();
 
