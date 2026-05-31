@@ -891,7 +891,7 @@ Typr["T"].CBLC = {
 			offset+=4;
 			
 			var coff = ooff+off;
-			for(var j=0; j<3; j++) {				
+			for(var j=0; j<num; j++) {	// fix: honour numberOfIndexSubTables; upstream hardcoded 3 (full Noto), which throws on subset fonts with a different count
 				var fgI = bin.readUshort(data,coff);  coff+=2;
 				var lgI = bin.readUshort(data,coff);  coff+=2;
 				var nxt = bin.readUint  (data,coff);  coff+=4; 

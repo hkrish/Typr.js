@@ -177,10 +177,11 @@ Typr["U"] = function() {
 			axs=_normalizeAxis(font,axs);
 		}
 		
-		var SVG = font["SVG "], CFF = font["CFF "], COLR=font["COLR"], CBLC=font["CBLC"], CBDT=font["CBDT"], sbix=font["sbix"], upng=window["UPNG"];
-		
+		var SVG = font["SVG "], CFF = font["CFF "], COLR=font["COLR"], CBLC=font["CBLC"], CBDT=font["CBDT"], sbix=font["sbix"];
+
 		var strike = null;
-		if(CBLC && upng) for(var i=0; i<CBLC.length; i++) if(CBLC[i][0]<=gid && gid<=CBLC[i][1]) strike=CBLC[i];
+		// fix: no UPNG gate — CBDT extraction below only reads the embedded PNG bytes; decoding is the caller's job
+		if(CBLC) for(var i=0; i<CBLC.length; i++) if(CBLC[i][0]<=gid && gid<=CBLC[i][1]) strike=CBLC[i];
 		
 		if(strike || (sbix && sbix[gid])) {
 			if(strike && strike[2]!=17) throw "not a PNG";
