@@ -1,0 +1,16 @@
+{
+  "name": "typr",
+  "version": "0.1.0",
+  "description": "OpenType font parser and shaper (Typr.js fork): table parsing, glyph outlines, HarfBuzz shaping",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
+  "license": "MIT"
+}
