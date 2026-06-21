@@ -123,7 +123,7 @@ Typr["parse"] = function(buff)
 	}
 	else readFONT(data, 0, 0, tmap, out);
 	
-	console.log(out);
+	//console.log(out);
 	
 	return out;
 }
@@ -1349,7 +1349,7 @@ Typr["T"].name = {
 		
 		var out;
 		for(var p in obj) { out=obj[p]; break; }
-		console.log("returning name table with languageID "+ out._lang);
+		//console.log("returning name table with languageID "+ out._lang);
 		if(out[psn]==null && out["ID"]!=null) out[psn]=out["ID"];
 		return out;
 	}

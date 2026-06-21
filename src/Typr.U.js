@@ -1005,7 +1005,7 @@ Typr["U"] = function() {
 		.then(function (x  ) { return x["arrayBuffer"](); })
 		.then(function (ab ) { return WebAssembly["instantiate"](ab); })
 		.then(function (res) {
-			console.log("HB ready");
+			//console.log("HB ready");
 			var exp = res["instance"]["exports"], mem=exp["memory"];
 			//mem["grow"](30); // each page is 64kb in size
 			var heapu8, u32,i32,f32;
