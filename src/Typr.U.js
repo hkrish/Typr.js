@@ -1152,6 +1152,15 @@ Typr["U"] = function() {
 	// Clusters no font covers also resolve to `dft` (prm.dft, default 0 — the
 	// cascade base; placing a last-resort font there makes .notdef visible).
 	// Adjacent clusters of the same font are coalesced.
+	//
+	// A NEUTRAL ONLY JOINS A FONT THAT HAS IT. The rule above is about script
+	// identity, and a font that covers the script need not cover the space: an
+	// emoji face typically has no space glyph at all, so "text 👍 text" handed
+	// its two spaces to the emoji face and shaped them as .notdef, which draws
+	// nothing where a space belongs and reports a missing glyph for each. Where
+	// the following font does not cover the neutrals they resolve on their own
+	// coverage instead, preferring the run they are leaving so a space between
+	// two words stays with the words.
 	function fontItemize(fonts, str, prm) {
 		if(prm==null) prm={};
 		var dft = prm["dft"]!=null ? prm["dft"] : 0;
@@ -1160,6 +1169,26 @@ Typr["U"] = function() {
 			var last = runs.length ? runs[runs.length-1] : null;
 			if(last && last["fi"]==fi) last["str"] += s;
 			else runs.push({"fi":fi, "str":s, "cl":cl});
+		}
+		// Whether font `fi` covers every code point of `s`.
+		function covers(fi, s) {
+			if(fi<0 || fi>=fonts.length) return false;
+			for(var i=0; i<s.length; ) {
+				var cp = s.codePointAt(i);  i += cp>0xffff ? 2 : 1;
+				var g = 0;  try {  g = codeToGlyph(fonts[fi], cp);  } catch(e) {  g = 0;  }
+				if(g == 0) return false;
+			}
+			return true;
+		}
+		// The font a buffered neutral run takes when `fi`, the font it was going
+		// to join, does not have it: the run it is leaving, then the cascade, then
+		// `fi` again (nothing covers it, so the .notdef belongs where it was going).
+		function neutralFont(fi, s) {
+			if(covers(fi, s)) return fi;
+			var prev = runs.length ? runs[runs.length-1]["fi"] : -1;
+			if(covers(prev, s)) return prev;
+			for(var i=0; i<fonts.length; i++) if(covers(i, s)) return i;
+			return fi;
 		}
 		var segs = [];
 		if(typeof Intl!="undefined" && Intl.Segmenter) {
@@ -1172,10 +1201,10 @@ Typr["U"] = function() {
 			var seg=segs[k][0], cl=segs[k][1];
 			if(/^\s+$/.test(seg)) {  if(pend) pend.str+=seg;  else pend={str:seg, cl:cl};  continue;  }
 			var fi = codeToFont(fonts, seg.codePointAt(0));  if(fi<0) fi=dft;
-			if(pend) {  emit(fi, pend.str, pend.cl);  pend=null;  }   // neutrals -> following strong cluster
+			if(pend) {  emit(neutralFont(fi, pend.str), pend.str, pend.cl);  pend=null;  }   // neutrals -> following strong cluster
 			emit(fi, seg, cl);
 		}
-		if(pend) emit(runs.length ? runs[runs.length-1]["fi"] : dft, pend.str, pend.cl);  // trailing -> previous run, else dft
+		if(pend) emit(neutralFont(runs.length ? runs[runs.length-1]["fi"] : dft, pend.str), pend.str, pend.cl);  // trailing -> previous run, else dft
 		return runs;
 	}
 
